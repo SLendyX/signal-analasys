@@ -29,22 +29,22 @@
             console.log(data)
             // Plot time-domain signal
             Plotly.newPlot('time-domain', [{
-                x: data.time_domain.time[0],
-                y: data.time_domain.signal[0],
+                x: data.time_domain.time,
+                y: data.time_domain.signal,
                 type: 'scatter'
             }], { title: 'Time-Domain Signal' });
 
             // Plot magnitude spectrum
             Plotly.newPlot('magnitude-spectrum', [{
-                x: data.magnitude_spectrum.frequencies[0],
-                y: data.magnitude_spectrum.magnitudes[0],
+                x: data.magnitude_spectrum.frequencies,
+                y: data.magnitude_spectrum.magnitudes,
                 type: 'scatter'
             }], { title: 'Magnitude Spectrum' });
 
             // Plot phase spectrum
             Plotly.newPlot('phase-spectrum', [{
-                x: data.phase_spectrum.frequencies[0],
-                y: data.phase_spectrum.phases[0],
+                x: data.phase_spectrum.frequencies,
+                y: data.phase_spectrum.phases,
                 type: 'scatter'
             }], { title: 'Phase Spectrum' });
         }

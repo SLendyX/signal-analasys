@@ -1,77 +1,68 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import matlab.engine
 import numpy as np
+from sympy import symbols, lambdify, pi, sin, cos
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 @app.route('/analyze', methods=['POST'])
 def analyze_signal():
-    # Start MATLAB engine
-    eng = matlab.engine.start_matlab()
-    eng.addpath('./', nargout=0)
-
     # Get signal data from request
-    signal_data = request.json.get('signal', '')
-    fs = 1000
+    signal_expression = request.json.get('signal', '')
+    fs = request.json.get('sampling_frequency', 1000)  # Default to 1000 Hz if not provided
 
-    
-
-    # Validate signal data and fs
-    if not signal_data:
-        return jsonify({'error': 'No signal data provided.'}), 400
+    # Validate signal expression and fs
+    if not signal_expression:
+        return jsonify({'error': 'No signal expression provided.'}), 400
     if not isinstance(fs, (int, float)) or fs <= 0:
         return jsonify({'error': 'Invalid sampling frequency provided.'}), 400
 
     try:
-        # Define parameters in MATLAB workspace
+        # Define the time variable and parse the signal expression
+        t = symbols('t')
+        signal_expr = eval(signal_expression, {"t": t, "pi": pi, "sin": sin, "cos": cos})
+
+        # Generate time vector
         L = 1000  # Default number of samples
-        T = 1 / fs
-        t = [i * T for i in range(L)]
-        eng.workspace['t'] = matlab.double(t)  # Pass 't' as a numeric vector
+        T = 1 / fs  # Sampling period
+        time_values = np.linspace(0, (L - 1) * T, L)
 
-        # Evaluate the signal
-        eng.workspace['custom_signal'] = eng.eval(signal_data)
+        # Convert symbolic expression to a numerical function
+        signal_func = lambdify(t, signal_expr, modules=["numpy"])
+        signal = signal_func(time_values)
 
-        # Run the MATLAB script
-        eng.eval('run("fourier_analysis.m")', nargout=0)
+        # Perform Fourier Transform
+        Y = np.fft.fft(signal)  # Compute FFT
+        P2 = np.abs(Y) / L      # Two-sided spectrum
+        P1 = P2[:L // 2 + 1]    # Single-sided spectrum
+        P1[1:-1] *= 2           # Scale magnitudes
 
-        
+        # Frequency vector
+        f = fs * np.arange(0, L // 2 + 1) / L
 
-        # Retrieve results
-        time_domain = eng.workspace['time_domain']
-        magnitude_spectrum = eng.workspace['magnitude_spectrum']
-        phase_spectrum = eng.workspace['phase_spectrum']
+        # Compute phase spectrum
+        phase = np.angle(Y[:L // 2 + 1])
 
-        # print(time_domain)
-
-        # results = {
-        #     "time_domain": {
-        #         "time": np.double(time_domain['time']).tolist(),
-        #     }
-        # }
+        # Prepare results
         results = {
             "time_domain": {
-                "time": np.double(time_domain['time']).tolist(),
-                "signal": np.double(time_domain['signal']).tolist(),
+                "time": time_values.tolist(),
+                "signal": signal.tolist(),
             },
             "magnitude_spectrum": {
-                "frequencies": np.double(magnitude_spectrum['frequencies']).tolist(),
-                "magnitudes": np.double(magnitude_spectrum['magnitudes']).tolist(),
+                "frequencies": f.tolist(),
+                "magnitudes": P1.tolist(),
             },
             "phase_spectrum": {
-                "frequencies": np.double(phase_spectrum['frequencies']).tolist(),
-                "phases": np.double(phase_spectrum['phases']).tolist(),
+                "frequencies": f.tolist(),
+                "phases": phase.tolist(),
             },
         }
-        print(results)
 
-        eng.quit()
         return jsonify(results)
 
     except Exception as e:
-        eng.quit()
         return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
