@@ -1,0 +1,8 @@
+error
+: 
+"\n  
+File 
+D:\\dev\\proiect_ms\\fourier_analysis.m, 
+line 8, in fourier_analysis\n\n  
+File D:\\Programs\\MATLAB\\R2024b\\toolbox\\matlab\\lang\\run.m, 
+line 112, in run\nUnrecognized function or variable 'fs'.\n"
