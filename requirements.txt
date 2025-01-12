@@ -1,0 +1,13 @@
+flask>=3.0.3,<3.0.4
+flask-cors>=3.0.10,<3.0.11
+matlabengine>=3.12,<3.13
+scipy>=1.14.1,<1.14.2
+numpy>=1.26.4,<1.26.5
+
+# Uncomment these lines to use a Postgres database. Both are needed, since in production
+# (which uses Linux) we want to install from source, so that security updates from the
+# underlying Heroku stack image are picked up automatically, thanks to dynamic linking.
+# On other platforms/in development, the precompiled binary package is used instead, to
+# speed up installation and avoid errors from missing libraries/headers.
+#psycopg[c]; sys_platform == "linux"
+#psycopg[binary]; sys_platform != "linux"
