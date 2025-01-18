@@ -1,8 +1,10 @@
 flask>=3.0.3,<3.0.4
 flask-cors>=3.0.10,<3.0.11
 gunicorn>=20.0.4,<20.0.5
+scipy>=1.14.1,<1.14.2
 sympy>=1.13.2,<1.13.3
 numpy>=1.26.4,<1.26.5
+
 
 # Uncomment these lines to use a Postgres database. Both are needed, since in production
 # (which uses Linux) we want to install from source, so that security updates from the

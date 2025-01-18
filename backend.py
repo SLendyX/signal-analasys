@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import numpy as np
 from sympy import symbols, lambdify, pi, sin, cos
+from scipy.signal import butter, filtfilt #added
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -32,32 +33,60 @@ def analyze_signal():
         signal_func = lambdify(t, signal_expr, modules=["numpy"])
         signal = signal_func(time_values)
 
+        ### Simulate non-ideal conditions ###
+        harmonic_frequencies = [2 * 50, 3 * 50]
+        harmonic_amplitudes = [0.3, 0.1]
+        noise_amplitude = 0.2
+
+        # Add harmonics
+        for hf, ha in zip(harmonic_frequencies, harmonic_amplitudes):
+            signal += ha * np.sin(2 * np.pi * hf * time_values)
+
+        # Add white noise
+        signal += noise_amplitude * np.random.normal(0, 1, len(time_values))
+
+
+        ### Apply filtering ###
+        # Design a low-pass filter to remove the harmonic distortion
+        cutoff = 50  # Cutoff frequency in Hz
+        nyquist = 0.5 * fs
+        normal_cutoff = cutoff / nyquist
+        b, a = butter(4, normal_cutoff, btype='low', analog=False)
+        filtered_signal = filtfilt(b, a, signal)
+
         # Perform Fourier Transform
-        Y = np.fft.fft(signal)  # Compute FFT
-        P2 = np.abs(Y) / L      # Two-sided spectrum
-        P1 = P2[:L // 2 + 1]    # Single-sided spectrum
-        P1[1:-1] *= 2           # Scale magnitudes
+        Y = np.fft.fft(signal)  # FFT of noisy signal
+        Y_filtered = np.fft.fft(filtered_signal)  # FFT of filtered signal
+        P2 = np.abs(Y) / L
+        P1 = P2[:L // 2 + 1]
+        P1[1:-1] *= 2
+        P2_filtered = np.abs(Y_filtered) / L
+        P1_filtered = P2_filtered[:L // 2 + 1]
+        P1_filtered[1:-1] *= 2
 
         # Frequency vector
         f = fs * np.arange(0, L // 2 + 1) / L
-
-        # Compute phase spectrum
-        phase = np.angle(Y[:L // 2 + 1])
+  # Compute phase spectrum
+        phase = np.angle(Y[:L // 2 + 1])  # Phase spectrum of noisy signal
+        phase_filtered = np.angle(Y_filtered[:L // 2 + 1])  # Phase spectrum of filtered signal
 
         # Prepare results
         results = {
             "time_domain": {
                 "time": time_values.tolist(),
-                "signal": signal.tolist(),
+                "noisy_signal": signal.tolist(),
+                "filtered_signal": filtered_signal.tolist(),
             },
             "magnitude_spectrum": {
                 "frequencies": f.tolist(),
-                "magnitudes": P1.tolist(),
+                "original_magnitudes": P1.tolist(),
+                "filtered_magnitudes": P1_filtered.tolist(),
             },
             "phase_spectrum": {
                 "frequencies": f.tolist(),
-                "phases": phase.tolist(),
-            },
+                "original_phases": phase.tolist(),
+                "filtered_phases": phase_filtered.tolist(),
+            }
         }
 
         return jsonify(results)
