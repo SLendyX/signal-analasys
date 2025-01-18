@@ -10,8 +10,8 @@ CORS(app)  # Enable CORS for all routes
 @app.route('/analyze', methods=['POST'])
 def analyze_signal():
     # Get signal data from request
-    signal_expression = request.json.get('signal', '')
-    fs = request.json.get('sampling_frequency', 1000)  # Default to 1000 Hz if not provided
+    signal_expression = request.json.get('signal', 'sin(2*pi*50*t)')
+    fs = int(request.json.get('fs', 1000))  # Default to 1000 Hz if not provided
 
     # Validate signal expression and fs
     if not signal_expression:
@@ -25,7 +25,7 @@ def analyze_signal():
         signal_expr = eval(signal_expression, {"t": t, "pi": pi, "sin": sin, "cos": cos})
 
         # Generate time vector
-        L = 1000  # Default number of samples
+        L = int(request.json.get('samples', 1000))  # Default number of samples
         T = 1 / fs  # Sampling period
         time_values = np.linspace(0, (L - 1) * T, L)
 
@@ -34,11 +34,12 @@ def analyze_signal():
         signal = signal_func(time_values)
 
         ### Simulate non-ideal conditions ###
-        harmonic_frequencies = [2 * 50, 3 * 50]
-        harmonic_amplitudes = [0.3, 0.1]
+        harmonic_frequencies = [int(numeric_string) for numeric_string in request.json.get('noise', [2 * 50, 3 * 50])]
+        harmonic_amplitudes = [np.random.random() for i in range(len(harmonic_frequencies))]
+
         noise_amplitude = 0.2
 
-        # Add harmonics
+      # Add harmonics
         for hf, ha in zip(harmonic_frequencies, harmonic_amplitudes):
             signal += ha * np.sin(2 * np.pi * hf * time_values)
 
@@ -48,7 +49,7 @@ def analyze_signal():
 
         ### Apply filtering ###
         # Design a low-pass filter to remove the harmonic distortion
-        cutoff = 50  # Cutoff frequency in Hz
+        cutoff = float(request.json.get('cutoff', 70))  # Cutoff frequency in Hz
         nyquist = 0.5 * fs
         normal_cutoff = cutoff / nyquist
         b, a = butter(4, normal_cutoff, btype='low', analog=False)
